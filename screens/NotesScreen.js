@@ -9,25 +9,30 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+const db = firebase.firestore().collection("todos");
+
 export default function NotesScreen({ navigation, route }) {
   const [notes, setNotes] = useState([]);
 
   // Load up Firebase database on start.
   // The snapshot keeps everything synced -- no need to refresh it later!
   useEffect(() => {
-    const unsubscribe = firebase
-      .firestore()
-      .collection("todos")
-      .onSnapshot((collection) => {
-        // Let's get back a snapshot of this collection
-        const updatedNotes = collection.docs.map((doc) => doc.data());
-        setNotes(updatedNotes); // And set our notes state array to its docs
+    const unsubscribe = db.onSnapshot((collection) => {
+      const updatedNotes = collection.docs.map((doc) => {
+        // create our own object that pulls the ID into a property
+        const noteObject = {
+          ...doc.data(),
+          id: doc.id,
+        };
+        console.log(noteObject);
+        return noteObject;
       });
 
+      setNotes(updatedNotes); // And set our notes state array to its docs
+    });
+
     // Unsubscribe when unmounting
-    return () => {
-      unsubscribe();
-    };
+    return unsubscribe;
   }, []);
 
   // This is to set up the top right button
@@ -54,11 +59,9 @@ export default function NotesScreen({ navigation, route }) {
     if (route.params?.text) {
       const newNote = {
         title: route.params.text,
-        done: false,
-        id: notes.length.toString(),
+        done: false, // no more id line!
       };
-      firebase.firestore().collection("todos").add(newNote);
-      // setNotes([...notes, newNote]);
+      db.add(newNote);
     }
   }, [route.params?.text]);
 
@@ -69,8 +72,7 @@ export default function NotesScreen({ navigation, route }) {
   // This deletes an individual note
   function deleteNote(id) {
     console.log("Deleting " + id);
-    // To delete that item, we filter out the item we don't want
-    setNotes(notes.filter((item) => item.id !== id));
+    db.doc(id).delete(); // this is much simpler now we have the Firestore ID
   }
 
   // The function to render each row in our FlatList
