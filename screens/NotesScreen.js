@@ -1,3 +1,4 @@
+import firebase from "../database/firebaseDB";
 import React, { useEffect, useState } from "react";
 import {
   StyleSheet,
@@ -10,6 +11,24 @@ import { Ionicons } from "@expo/vector-icons";
 
 export default function NotesScreen({ navigation, route }) {
   const [notes, setNotes] = useState([]);
+
+  // Load up Firebase database on start.
+  // The snapshot keeps everything synced -- no need to refresh it later!
+  useEffect(() => {
+    const unsubscribe = firebase
+      .firestore()
+      .collection("todos")
+      .onSnapshot((collection) => {
+        // Let's get back a snapshot of this collection
+        const updatedNotes = collection.docs.map((doc) => doc.data());
+        setNotes(updatedNotes); // And set our notes state array to its docs
+      });
+
+    // Unsubscribe when unmounting
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   // This is to set up the top right button
   useEffect(() => {
@@ -38,7 +57,8 @@ export default function NotesScreen({ navigation, route }) {
         done: false,
         id: notes.length.toString(),
       };
-      setNotes([...notes, newNote]);
+      firebase.firestore().collection("todos").add(newNote);
+      // setNotes([...notes, newNote]);
     }
   }, [route.params?.text]);
 
